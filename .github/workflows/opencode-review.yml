@@ -25,7 +25,7 @@ jobs:
     # a fork's head cannot steer the prompt.
     if: |
       github.event.pull_request.head.repo.full_name == github.repository &&
-      !contains(github.event.pull_request.user.login, 'bot')
+      github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     permissions:
       # Read the code, post the review. Not `contents: write`: a review bot has
@@ -38,7 +38,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # latest
+      - uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # v1.18.33
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -49,7 +49,8 @@ jobs:
           model: opencode/big-pickle
           prompt: |
             Review this pull request for the Omarchy plugin omarchy-github-inbox,
-            which is shell, QML and JSON.
+            which is shell, QML and JSON. Post the findings as review comments
+            only: do not edit files, create commits, or push anything.
 
             Worth a look:
             - Shell scripts: quoting, `set -uo pipefail`, untrusted input from
