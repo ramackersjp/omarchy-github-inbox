@@ -7,6 +7,9 @@ version: 2
 updates:
   # The plugin itself is shell and QML with no package manifest, so the only
   # thing here with upstream versions to track is the CI workflow.
+  # No target-branch: Dependabot follows the repository default branch, which
+  # is `хауба` since the rename. Pinning a name here would break on the next
+  # rename, while omitting it keeps working.
   - package-ecosystem: "github-actions" # See documentation for possible values
     directory: "/" # Location of package manifests
     schedule:
