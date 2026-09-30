@@ -30,9 +30,9 @@ This repository is a fork of
 [viniciusfnery/omarchy-github-inbox](https://github.com/viniciusfnery/omarchy-github-inbox),
 which stays the place for the original author's releases. Install from this
 fork if you want the standalone app windows described under
-[Opening links](#opening-links); `main` here can carry work the upstream does
-not have yet. The plugin id stays `viniciusfnery.github-inbox` in both, so
-every command below works either way.
+[Opening links](#opening-links); its default branch, `хауба`, can carry work
+the upstream does not have yet. The plugin id stays
+`viniciusfnery.github-inbox` in both, so every command below works either way.
 
 ## Requirements
 
