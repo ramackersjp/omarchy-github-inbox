@@ -18,6 +18,7 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
   readonly property string scriptPath: Qt.resolvedUrl("fetch.sh").toString().replace(/^file:\/\//, "")
+  readonly property string openScriptPath: Qt.resolvedUrl("open.sh").toString().replace(/^file:\/\//, "")
 
   // Never name this `data`: that shadows Item's default property and steals
   // every declared child from the scene.
@@ -303,7 +304,10 @@ Panel {
     // quoting: a poisoned cache must not be able to open anything else.
     var target = String(url || "")
     if (target.indexOf("https://github.com/") !== 0 || target.indexOf("'") >= 0 || root.bar === null) return
-    root.bar.run("omarchy-launch-browser '" + target + "'")
+    var mode = String(root.setting("openMode", "app")).toLowerCase() === "browser" ? "browser" : "app"
+    // open.sh resolves the default browser and opens a standalone app window
+    // when it can; it re-checks the URL itself before anything is launched.
+    root.bar.run("bash '" + openScriptPath + "' --mode '" + mode + "' '" + target + "'")
     root.close()
   }
 
@@ -542,7 +546,7 @@ Panel {
         + (root.unreadMentions > 0 ? " · " + root.unreadMentions + " new mentions" : "")
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.RightButton) {
-        if (root.bar) root.bar.run("omarchy-launch-browser 'https://github.com/notifications'")
+        root.openUrl("https://github.com/notifications")
       } else if (buttonCode === Qt.MiddleButton) {
         root.refreshNow()
       } else {

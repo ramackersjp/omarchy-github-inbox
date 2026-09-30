@@ -219,6 +219,123 @@ out=$(bash "$FETCH")
 t "url allowlist: non-github.com rows are dropped everywhere" \
   "$(jqt '(.issues | length == 1) and (.issues[0].url | startswith("https://github.com/")) and (.notifications | length == 0)' "$out")"
 
+# ------------------------------------------------------------- opening links
+#
+# open.sh runs against fake desktop entries and a fake browser: no window is
+# ever mapped, every launch is just a line in $OPEN_LOG.
+OPEN="$PWD/open.sh"
+
+open_env() { # [browser-version]
+  TMP=$(mktemp -d)
+  export HOME="$TMP/home"
+  export XDG_CACHE_HOME="$TMP/cache"
+  export PATH="$TESTS_DIR/open-bin:$BASE_PATH"
+  export FAKE_BROWSER_VERSION="${1:-Chromium 120.0.6099.109}"
+  export FAKE_BROWSER_LOG="$TMP/browser.log"
+  export FAKE_LAUNCH_LOG="$TMP/launch.log"
+  export FAKE_HYPR_LOG="$TMP/hypr.log"
+  export FAKE_HYPR_CLIENTS="$TMP/clients.json"
+  export FAKE_HYPR_READS="$TMP/hypr.reads"
+  unset HYPRLAND_INSTANCE_SIGNATURE FAKE_DEFAULT_BROWSER FAKE_MIME_BROWSER
+  mkdir -p "$HOME/.local/share/applications" "$XDG_CACHE_HOME"
+  echo '[]' >"$FAKE_HYPR_CLIENTS"
+  : >"$FAKE_HYPR_READS"
+  : >"$FAKE_LAUNCH_LOG"
+  : >"$FAKE_HYPR_LOG"
+  printf 'Exec=fake-browser %%U\n' >"$HOME/.local/share/applications/fake-browser.desktop"
+  OPEN_LOG="$FAKE_LAUNCH_LOG"
+  DECISION_LOG="$XDG_CACHE_HOME/omarchy-github-inbox-open.log"
+}
+
+launched() { grep -qF -- "$1" "$OPEN_LOG" && echo true || echo false; }
+
+PULL_URL="https://github.com/acme/repo1/pull/3"
+
+open_env
+bash "$OPEN" "$PULL_URL"
+t "open: chromium-family browser gets a standalone app window" \
+  "$(launched "--app=$PULL_URL")"
+t "open: launch goes through the uwsm/systemd wrapper" "$(launched "uwsm-app -- fake-browser")"
+
+open_env
+bash "$OPEN" --mode browser "$PULL_URL"
+t "open: browser mode skips --app= and opens the URL plainly" \
+  "$([[ $(launched "$PULL_URL") == true && $(launched "--app=$PULL_URL") == false ]] && echo true || echo false)"
+
+open_env "Mozilla Firefox 131.0"
+bash "$OPEN" "$PULL_URL"
+t "open: firefox-family browser falls back to a normal window" \
+  "$([[ $(launched "$PULL_URL") == true && $(launched "--app=$PULL_URL") == false ]] && echo true || echo false)"
+t "open: the fallback records why it fell back" \
+  "$(grep -qF "no app mode in Mozilla Firefox" "$DECISION_LOG" && echo true || echo false)"
+
+open_env
+bash "$OPEN" "$PULL_URL"
+t "open: the app-window launch is recorded as such" \
+  "$(grep -qF "app window: fake-browser --app=$PULL_URL" "$DECISION_LOG" && echo true || echo false)"
+
+open_env
+export HYPRLAND_INSTANCE_SIGNATURE=fake
+bash "$OPEN" "$PULL_URL"
+t "open: an unfocusable app window is reported instead of passing silently" \
+  "$(grep -qF "stayed behind" "$DECISION_LOG" && echo true || echo false)"
+
+open_env
+mkfifo "$DECISION_LOG"
+timeout 10 bash "$OPEN" "$PULL_URL"
+t "open: a planted fifo log cannot block the launch" \
+  "$([[ $? -ne 124 && $(launched "--app=$PULL_URL") == true ]] && echo true || echo false)"
+
+open_env
+bash "$OPEN" >/dev/null 2>&1
+t "open: no URL launches nothing" "$([[ ! -s $OPEN_LOG ]] && echo true || echo false)"
+t "open: a call without a URL is still recorded" \
+  "$(grep -qF "called: mode=app url=<none>" "$DECISION_LOG" && echo true || echo false)"
+
+open_env
+bash "$OPEN" "https://evil.example/login" >/dev/null 2>&1
+t "open: non-github.com URL never reaches a browser" \
+  "$([[ $? -ne 0 && ! -s $OPEN_LOG ]] && echo true || echo false)"
+t "open: the rejection is recorded so a silent no-op is explainable" \
+  "$(grep -qF "rejected: not a github.com URL" "$DECISION_LOG" && echo true || echo false)"
+
+open_env
+bash "$OPEN" "https://github.com/a' -incognito https://evil.example" >/dev/null 2>&1
+t "open: quote that would break the shell quoting is rejected" \
+  "$([[ $? -ne 0 && ! -s $OPEN_LOG ]] && echo true || echo false)"
+
+open_env
+bash "$OPEN" "https://github.com/a;reboot" >/dev/null 2>&1
+t "open: shell metacharacters are rejected" \
+  "$([[ $? -ne 0 && ! -s $OPEN_LOG ]] && echo true || echo false)"
+
+open_env
+FAKE_DEFAULT_BROWSER="" FAKE_MIME_BROWSER="" bash "$OPEN" "$PULL_URL"
+t "open: unresolvable browser falls back to omarchy-launch-browser" \
+  "$(launched "omarchy-launch-browser $PULL_URL")"
+
+open_env
+FAKE_DEFAULT_BROWSER="../../../etc/passwd" bash "$OPEN" "$PULL_URL"
+t "open: desktop entry path traversal is ignored" \
+  "$(launched "omarchy-launch-browser $PULL_URL")"
+
+open_env
+export HYPRLAND_INSTANCE_SIGNATURE="test"
+echo '[{"class": "brave-github.com__notifications-Default", "address": "0xdeadbeef"}]' \
+  >"$FAKE_HYPR_CLIENTS"
+export FAKE_HYPR_DELAY=2
+bash "$OPEN" "$PULL_URL"
+t "open: the new app window is focused, not left behind the panel" \
+  "$(grep -qF 'hl.dsp.focus({ window = "address:0xdeadbeef" })' "$FAKE_HYPR_LOG" && echo true || echo false)"
+
+open_env
+export HYPRLAND_INSTANCE_SIGNATURE="test"
+echo '[{"class": "kitty", "address": "0xdeadbeef"}]' >"$FAKE_HYPR_CLIENTS"
+export FAKE_HYPR_DELAY=2
+bash "$OPEN" "$PULL_URL"
+t "open: some unrelated window opening instead is not focused" \
+  "$([[ ! -s $FAKE_HYPR_LOG || $(grep -c 'dispatch focuswindow' "$FAKE_HYPR_LOG") -eq 0 ]] && echo true || echo false)"
+
 echo
 echo "$pass passed, $fail failed"
 exit "$((fail > 0 ? 1 : 0))"

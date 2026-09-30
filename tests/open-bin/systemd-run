@@ -1,0 +1,4 @@
+#!/bin/bash
+# Fake systemd-run: stands in for the real launcher wrapper, logging the
+# command line it was handed (everything after `--`).
+printf '%s\n' "$*" >>"$FAKE_LAUNCH_LOG"

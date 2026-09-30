@@ -1,0 +1,3 @@
+#!/bin/bash
+# Fake xdg-settings: the default browser is whatever the test says it is.
+printf '%s\n' "${FAKE_DEFAULT_BROWSER-fake-browser.desktop}"

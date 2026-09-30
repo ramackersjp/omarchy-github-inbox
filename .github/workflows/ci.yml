@@ -16,16 +16,17 @@ jobs:
           persist-credentials: false
 
       - name: Syntax check
-        run: bash -n fetch.sh tests/run.sh tests/bin/gh
+        run: bash -n fetch.sh open.sh tests/run.sh tests/bin/gh tests/open-bin/*
 
       - name: Shellcheck
-        run: shellcheck -S error fetch.sh tests/run.sh tests/bin/gh
+        run: shellcheck -S error fetch.sh open.sh tests/run.sh tests/bin/gh tests/open-bin/*
 
       - name: Manifest sanity
         run: |
           jq -e '.schemaVersion and .id and .name and .version
                  and (.kinds | index("bar-widget"))
-                 and .entryPoints.barWidget' manifest.json
+                 and .entryPoints.barWidget
+                 and (.barWidget.schema | map(.key) | length == (unique | length))' manifest.json
 
       - name: Tests
         run: tests/run.sh
