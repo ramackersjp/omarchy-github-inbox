@@ -57,8 +57,16 @@ Requires the [GitHub CLI](https://cli.github.com) (`gh`) and `jq`
 
 ```bash
 omarchy pkg add github-cli   # if gh is missing
-omarchy plugin add https://github.com/viniciusfnery/omarchy-github-inbox.git --enable
+omarchy plugin add https://github.com/ramackersjp/omarchy-github-inbox.git --enable
 ```
+
+This repository is a fork of
+[viniciusfnery/omarchy-github-inbox](https://github.com/viniciusfnery/omarchy-github-inbox),
+which stays the place for the original author's releases. Install from this
+fork only if you want the changes listed under [Opening links](#opening-links)
+and further, since `main` here can carry work the upstream does not have yet.
+The plugin id stays `viniciusfnery.github-inbox` in both, so the commands
+below work either way.
 
 ## Authentication
 
@@ -191,4 +199,4 @@ CI runs the suite plus shellcheck and a manifest sanity check on every push.
 
 ## License
 
-MIT
+MIT, as in the upstream this is forked from. Copyright (c) 2026 Vinicius Nery.
