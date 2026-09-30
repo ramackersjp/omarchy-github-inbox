@@ -1,0 +1,7 @@
+#!/bin/bash
+# Fake browser: reports whatever version string the test wants (that is how
+# open.sh decides whether `--app=` exists) and logs every launch.
+case "${1:-}" in
+--version) printf '%s\n' "${FAKE_BROWSER_VERSION:-Chromium 120.0.6099.109}"; exit 0 ;;
+esac
+printf '%s\n' "$*" >>"$FAKE_BROWSER_LOG"

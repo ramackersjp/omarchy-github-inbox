@@ -33,7 +33,7 @@ switches to the urgent color while unread notifications or mentions wait.
 | `j`/`k` or ↓/↑ | Move the row cursor |
 | `h`/`l` or ←/→ | Switch organization filter |
 | `[` / `]` | Jump between sections |
-| `Enter` | Open the selected row in the browser |
+| `Enter` | Open the selected row as a standalone app window |
 | `/` | Fuzzy find (neovim-style subsequence match on titles, repos, and section names, scoped to the active org filter); `Enter` accepts the filter and returns to navigation, `Esc` clears |
 | `r` | Refresh |
 
@@ -77,6 +77,49 @@ the token expires), the panel shows a "Not signed in: run gh auth login" card
 instead of silently going empty, and recovers on its own within
 30 seconds of you logging in.
 
+## Opening links
+
+Every row (and the notifications page on the chip) opens as a **standalone app
+window**: no tab strip, no address bar, just the page, the way a PWA looks.
+Each click opens its own window, and the new window is focused for you instead
+of landing behind whatever you were working in.
+
+The window comes from **your** default browser, resolved the same way Omarchy
+resolves it (`xdg-settings`, then the MIME handler). Chromium-family browsers
+(Chrome, Chromium, Brave, Edge, Vivaldi) get the app window; browsers without
+an equivalent (Firefox and its forks) fall back to an ordinary window, as does
+the `openMode: browser` setting below.
+
+App windows are named after the site by the browser itself
+(`brave-github.com__notifications-Default`,
+`chrome-github.com__owner__repo__pull__12-Default`), which is what lets
+Hyprland style them apart from your browser window. To get the floating,
+centered, fixed-size window a PWA usually has, add this to
+`~/.config/hypr/windows.lua` and `require("hypr.windows")` from your
+`~/.config/hypr/hyprland.lua`:
+
+```lua
+o.window("^.+\\-github\\.com__.+$", { float = true, center = true, size = { 1280, 900 } })
+```
+
+Hyprland matches rule regexes against the whole window class, hence the
+anchors. Without that rule the window just tiles like any other window.
+
+Which path a click took is recorded in
+`~/.cache/omarchy-github-inbox-open.log` (one line, capped at 256KB), so "it
+opened the wrong window" is a log read rather than a guess.
+
+### If links still open the old way
+
+Start with that log: an empty file after a click means the panel did not run
+`open.sh` at all, which in practice means the shell is still running the old
+plugin. Quickshell hot-reloads plugins on change, but a shell that has been
+running since a plugin was edited can keep the old instance alive; restart it:
+
+```bash
+pkill -f 'quickshell -n -p /usr/share/omarchy/shell'   # Omarchy relaunches it
+```
+
 ## Settings
 
 Settings live in the widget's entry in `~/.config/omarchy/shell.json`. Edit
@@ -96,6 +139,7 @@ settings UI under the bar widget's options.
 | `mentionLimit` | `30` | How many open mention threads to track |
 | `closedDays` | `30` | How far back "recently closed" looks |
 | `closedLimit` | `5` | Closed rows shown per org tab |
+| `openMode` | `app` | `app` opens links as standalone windows, `browser` opens an ordinary browser window |
 
 ## Uninstall
 
@@ -109,6 +153,7 @@ small data files remain to delete, and your keybinding if you added one:
 
 ```bash
 rm -f ~/.cache/omarchy-github-tasks.json \
+      ~/.cache/omarchy-github-inbox-open.log \
       ~/.local/state/omarchy/github-mentions-seen.json
 ```
 
@@ -117,9 +162,10 @@ The plugin never touches your GitHub credentials; those belong to the
 
 ## Development
 
-`fetch.sh` (the data collector) is covered by a token-free test suite that
-runs it against a fake `gh` serving fixtures, including regression tests for
-rate-limit garbage on stdout, oversized payloads, and cache poisoning:
+`fetch.sh` (the data collector) and `open.sh` (the link opener) are covered by
+a token-free test suite that runs them against a fake `gh` serving fixtures and
+a fake browser recording launches, including regression tests for rate-limit
+garbage on stdout, oversized payloads, and cache poisoning:
 
 ```bash
 tests/run.sh
@@ -140,7 +186,8 @@ CI runs the suite plus shellcheck and a manifest sanity check on every push.
 - Lists cap at the 50 most recently updated per section (mentions 30, closed
   20 per type / last 30 days).
 - Rows only ever open `https://github.com/` URLs; GitHub Enterprise hosts are
-  not supported.
+  not supported. `open.sh` re-checks that allowlist itself before launching
+  anything, so a poisoned cache cannot open a different host or inject flags.
 
 ## License
 

@@ -1,0 +1,3 @@
+#!/bin/bash
+# Fake xdg-mime: the second-choice lookup, empty unless the test needs it.
+printf '%s\n' "${FAKE_MIME_BROWSER-}"

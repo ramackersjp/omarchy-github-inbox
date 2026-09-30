@@ -26,9 +26,21 @@
             "refreshIntervalSec": 300,
             "mentionLimit": 30,
             "closedDays": 30,
-            "closedLimit": 5
+            "closedLimit": 5,
+            "openMode": "app"
         },
         "schema": [
+            {
+                "key": "openMode",
+                "type": "enum",
+                "label": "Open links in",
+                "options": [
+                    "app",
+                    "browser"
+                ],
+                "defaultValue": "app",
+                "description": "App opens every link as a standalone window in your default browser, PWA-style, without tabs or an address bar. Browser opens an ordinary browser window; browsers without app mode (Firefox and forks) always fall back to this."
+            },
             {
                 "key": "refreshIntervalSec",
                 "type": "integer",

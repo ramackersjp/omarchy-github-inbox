@@ -1,0 +1,15 @@
+#!/bin/bash
+# Fake hyprctl: logs every call. `clients` answers with no windows for the
+# first FAKE_HYPR_DELAY reads, then with the app window appearing.
+printf 'hyprctl %s\n' "$*" >>"$FAKE_HYPR_LOG"
+if [[ ${1:-} == "-j" && ${2:-} == "clients" ]]; then
+  reads=$(( $(cat "$FAKE_HYPR_READS" 2>/dev/null || echo 0) + 1 ))
+  printf '%s' "$reads" >"$FAKE_HYPR_READS"
+  if (( reads < ${FAKE_HYPR_DELAY:-1} )); then
+    echo '[]'
+  else
+    cat "$FAKE_HYPR_CLIENTS"
+  fi
+  exit 0
+fi
+exit 0
