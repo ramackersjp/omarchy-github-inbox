@@ -278,6 +278,32 @@ qmllint -I "$OMARCHY_PATH/shell" "$PLUGIN_DIR/Panel.qml"
 
 Both must exit without an error.
 
+### OpenCode reviews pull requests
+
+`.github/workflows/opencode-review.yml` follows the upstream guide at
+<https://opencode.ai/docs/github/>. It reviews every pull request on opened,
+synchronized, reopened, and ready-for-review, and skips PRs whose head lives in
+another repository, plus anything authored by a bot, so a fork's head cannot
+steer the prompt.
+
+It needs one repository secret, since a pull request from a fork gets no
+secrets of its own:
+
+```sh
+gh secret set OPENCODE_API_KEY --repo ramackersjp/omarchy-github-inbox
+```
+
+Without that secret the job fails on a missing key; with it, the review lands
+as a normal review comment. Change the `model` input, and the matching key, if
+you review with a different provider. Both actions are pinned by commit, the
+way `ci.yml` pins `actions/checkout`.
+
+The workflow uses `use_github_token`, which skips installing the OpenCode
+GitHub App and stands the runner token in for it. That makes the permissions in
+the job deliberate rather than inherited: `contents: read`,
+`pull-requests: write`, `issues: write`. Note the missing `contents: write`: a
+review bot that cannot push cannot push, whatever the prompt asks of it.
+
 ## License
 
 MIT, as in the upstream this is forked from. Copyright (c) 2026 Vinicius Nery.
