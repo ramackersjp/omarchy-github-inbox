@@ -1,0 +1,66 @@
+name: opencode-review
+
+# OpenCode reviews every pull request here. Follows the upstream guide at
+# https://opencode.ai/docs/github/ ("Pull Request Example"), pinned by commit
+# like ci.yml does. Needs one repository secret:
+#
+#   gh secret set OPENCODE_API_KEY --repo ramackersjp/omarchy-github-inbox
+#
+# It reviews only; it cannot push, because `contents` stays read-only below.
+# Swap `model` and the key if you review with a different provider.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: opencode-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Never let the bot review itself, and skip PRs from other repositories so
+    # a fork's head cannot steer the prompt.
+    if: |
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !contains(github.event.pull_request.user.login, 'bot')
+    runs-on: ubuntu-latest
+    permissions:
+      # Read the code, post the review. Not `contents: write`: a review bot has
+      # no business pushing to a branch, and the token should not be able to.
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # `use_github_token` skips installing the OpenCode GitHub App; the
+          # runner token stands in, which is why the permissions above matter.
+          use_github_token: true
+          model: opencode/big-pickle
+          prompt: |
+            Review this pull request for the Omarchy plugin omarchy-github-inbox,
+            which is shell, QML and JSON.
+
+            Worth a look:
+            - Shell scripts: quoting, `set -uo pipefail`, untrusted input from
+              the cache, anything running `eval` or building a command string
+            - `open.sh`: the github.com URL allowlist, the browser resolution
+              fallbacks, and the `comm`/`head -1` early exit on a pipe
+            - QML: bindings that outlive their component, `bar.run` calls that
+              could double-fire, and every URL reaching a browser
+            - Tests: a new test that proves nothing, or a changed assertion that
+              no longer tests what its name claims
+
+            Say plainly when a pull request looks good. Do not invent problems
+            to have something to say, and do not report style preferences the
+            surrounding code does not follow.
