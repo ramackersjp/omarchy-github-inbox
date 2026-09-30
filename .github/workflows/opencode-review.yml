@@ -38,7 +38,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # v1.18.33
+      # The action has its own release line (`github-v1.2.x`) apart from the
+      # opencode CLI's (`v1.18.x`); this SHA is `github-v1.2.19`, and is also
+      # what `refs/tags/latest` peels to right now.
+      - uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # github-v1.2.19
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
